@@ -23,9 +23,14 @@ def fitness(graph, path):
     distance += graph[path[-1]][path[0]]
     return distance
 
+# seleção por torneio - escolhe k indivíduos aleatórios e retorna o melhor
 def tournament_selection(graph, population, k=3):
     selected = random.sample(population, k)
-    return min(selected, key=lambda p: fitness(graph, p))
+    best = selected[0]
+    for c in selected:
+        if fitness(graph, c) < fitness(graph, best):
+            best = c
+    return best
 
 # crossover por ordenação (OX)
 def ordered_crossover(parent1, parent2):
@@ -97,7 +102,8 @@ def plot_graph(graph, best_path):
     plt.show()
 
 n_city = 5
-graph = generate_graph(n_city)
-best_path, best_distance = genetic_algorithm(graph)
-print(f"Melhor caminho encontrado: {best_path} com distância total {best_distance} unidades")
-plot_graph(graph, best_path)
+random_city = generate_graph(n_city)
+t1 = {0: {1: 76, 2: 48, 3: 89, 4: 66}, 1: {0: 76, 2: 77, 3: 97, 4: 79}, 2: {0: 48, 1: 77, 3: 18, 4: 95}, 3: {0: 89, 1: 97, 2: 18, 4: 86}, 4: {0: 66, 1: 79, 2: 95, 3: 86}}
+best_path, best_distance = genetic_algorithm(random_city)
+print(f"Melhor caminho encontrado: {best_path} com distância total de {best_distance} unidades")
+plot_graph(random_city, best_path)
