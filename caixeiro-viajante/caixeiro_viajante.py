@@ -2,24 +2,38 @@ import random
 import matplotlib.pyplot as plt
 import networkx as nx
 
-# gera cidade aleatória
-def generate_graph(num_nodes):
+
+def generate_sparse_graph(num_nodes, edge_prob=0.5):
     graph = {i: {} for i in range(num_nodes)}
     for i in range(num_nodes):
         for j in range(i + 1, num_nodes):
-            weight = random.randint(1, 100)
-            graph[i][j] = weight
-            graph[j][i] = weight
+            if random.random() < edge_prob:  # probabilidade de criar uma aresta entre os nós
+                weight = random.randint(1, 100)
+                graph[i][j] = weight
+                graph[j][i] = weight
     return graph
 
-# população inicial de caminhos aleatórios
+# cria população inicial de caminhos válidos
 def create_population(graph, size):
     nodes = list(graph.keys())
-    return [random.sample(nodes, len(nodes)) for _ in range(size)]
+    valid_paths = []
+    while len(valid_paths) < size:
+        path = random.sample(nodes, len(nodes))
+        if all(path[i+1] in graph[path[i]] for i in range(len(path) - 1)) and path[0] in graph[path[-1]]:
+            valid_paths.append(path)
+    return valid_paths
 
-# calcula a distância total do caminho
+# calcula a distância total do caminho e penaliza caminhos inválidos
 def fitness(graph, path):
-    distance = sum(graph[path[i]][path[i+1]] for i in range(len(path) - 1))
+    distance = 0
+    for i in range(len(path) - 1):
+        if path[i+1] not in graph[path[i]]:
+            return float('inf')  # penaliza caminhos inválidos
+        distance += graph[path[i]][path[i+1]]
+    
+    # verifica se há uma aresta entre o último e o primeiro nó
+    if path[0] not in graph[path[-1]]:
+        return float('inf')
     distance += graph[path[-1]][path[0]]
     return distance
 
@@ -102,8 +116,8 @@ def plot_graph(graph, best_path):
     plt.show()
 
 n_city = 5
-random_city = generate_graph(n_city)
-t1 = {0: {1: 76, 2: 48, 3: 89, 4: 66}, 1: {0: 76, 2: 77, 3: 97, 4: 79}, 2: {0: 48, 1: 77, 3: 18, 4: 95}, 3: {0: 89, 1: 97, 2: 18, 4: 86}, 4: {0: 66, 1: 79, 2: 95, 3: 86}}
+random_city = generate_sparse_graph(n_city, edge_prob=0.6)
+
 best_path, best_distance = genetic_algorithm(random_city)
 print(f"Melhor caminho encontrado: {best_path} com distância total de {best_distance} unidades")
 plot_graph(random_city, best_path)
