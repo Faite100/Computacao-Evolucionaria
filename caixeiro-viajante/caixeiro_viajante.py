@@ -1,9 +1,9 @@
 import random
 import matplotlib.pyplot as plt
 import networkx as nx
+import math
 
-
-def generate_sparse_graph(num_nodes, edge_prob=0.5):
+def generate(num_nodes, edge_prob=0.5):
     graph = {i: {} for i in range(num_nodes)}
     for i in range(num_nodes):
         for j in range(i + 1, num_nodes):
@@ -18,23 +18,27 @@ def create_population(graph, size):
     nodes = list(graph.keys())
     valid_paths = []
     while len(valid_paths) < size:
+        # print(f"tentativa {len(valid_paths)}") 
         path = random.sample(nodes, len(nodes))
         if all(path[i+1] in graph[path[i]] for i in range(len(path) - 1)) and path[0] in graph[path[-1]]:
             valid_paths.append(path)
+    # print(valid_paths)
     return valid_paths
 
 # calcula a distância total do caminho e penaliza caminhos inválidos
 def fitness(graph, path):
     distance = 0
+    # penalização por caminhos inválidos
     for i in range(len(path) - 1):
         if path[i+1] not in graph[path[i]]:
-            return float('inf')  # penaliza caminhos inválidos
-        distance += graph[path[i]][path[i+1]]
-    
-    # verifica se há uma aresta entre o último e o primeiro nó
+            # penaliza com uma grande quantidade proporcional à posição no caminho
+            distance += 1000  # penalização constante para caminhos inválidos
+        else:
+            distance += graph[path[i]][path[i+1]]
+
     if path[0] not in graph[path[-1]]:
-        return float('inf')
-    distance += graph[path[-1]][path[0]]
+        distance += 1000  # penalização para não completar o ciclo
+    
     return distance
 
 # seleção por torneio - escolhe k indivíduos aleatórios e retorna o melhor
@@ -62,83 +66,90 @@ def ordered_crossover(parent1, parent2):
 
 # mutação de troca de posições
 def swap_mutation(individual):
-    # print('Antes:', individual)
     a, b = random.sample(range(len(individual)), 2)
     individual[a], individual[b] = individual[b], individual[a]
-    # print('Depois:', individual)
 
 def genetic_algorithm(graph, pop_size=50, generations=500, mutation_rate=0.1):
-    """
-    Executa um algoritmo genético para resolver o problema do caixeiro viajante.
-
-    Parâmetros:
-    - graph (dict): O grafo representando as cidades e as distâncias entre elas. 
-                    É um dicionário onde as chaves são os nós (cidades) e os valores 
-                    são dicionários com os vizinhos e os pesos das arestas.
-    - pop_size (int): O tamanho da população inicial. Define quantos indivíduos (caminhos) 
-                      existirão em cada geração. Valor padrão: 50.
-    - generations (int): O número de gerações que o algoritmo irá executar. Cada geração 
-                        representa uma iteração do processo de evolução. Valor padrão: 500.
-    - mutation_rate (float): A taxa de mutação, que define a probabilidade de um indivíduo 
-                            sofrer mutação após o crossover. Valor padrão: 0.1 (10%).
-
-    Retorna:
-    - best_solution (list): O melhor caminho encontrado pelo algoritmo, representado como 
-                            uma lista de nós (cidades).
-    - best_distance (float): A distância total do melhor caminho encontrado.
-    """
     population = create_population(graph, pop_size)
     best_solution = min(population, key=lambda p: fitness(graph, p))
     best_distance = fitness(graph, best_solution)
-    
+
+    best_distances = []
+    avg_distances = []
+
     for i in range(generations):
         new_population = []
         for j in range(pop_size // 2):
             parent1 = tournament_selection(graph, population)
             parent2 = tournament_selection(graph, population)
-            child1, child2 = ordered_crossover(parent1, parent2), ordered_crossover(parent2, parent1)
+            child1 = ordered_crossover(parent1, parent2)
+            child2 = ordered_crossover(parent2, parent1)
             if random.random() < mutation_rate:
                 swap_mutation(child1)
             if random.random() < mutation_rate:
                 swap_mutation(child2)
             new_population.extend([child1, child2])
-        
+
         population = new_population
+
+        fitness_values = [fitness(graph, p) for p in population]
+        avg_distance = sum(fitness_values) / len(fitness_values)
         current_best = min(population, key=lambda p: fitness(graph, p))
         current_best_distance = fitness(graph, current_best)
-        if current_best_distance < best_distance:
-            best_solution, best_distance = current_best, current_best_distance
-    
-    return best_solution, best_distance
 
-# plota o grafo original e o melhor caminho encontrado
-def plot_graph(graph, best_path):
+        if current_best_distance < best_distance:
+            best_solution = current_best
+            best_distance = current_best_distance
+
+        best_distances.append(current_best_distance)
+        avg_distances.append(avg_distance)
+
+    return best_solution, best_distance, avg_distances, best_distances
+
+def plot_graph(graph, best_path, avg_distances, best_distances, best_distance):
     G = nx.Graph()
     for node, edges in graph.items():
         for neighbor, weight in edges.items():
             G.add_edge(node, neighbor, weight=weight)
     pos = nx.spring_layout(G, seed=42)
-    
-    plt.figure(figsize=(10, 5))
-    
-    plt.subplot(1, 2, 1)
-    plt.title("original")
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray')
-    labels = nx.get_edge_attributes(G, 'weight')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
-    
-    plt.subplot(1, 2, 2)
+
+    plt.figure(figsize=(12, 8))
     plt.title("melhor caminho encontrado")
     edges = [(best_path[i], best_path[i+1]) for i in range(len(best_path)-1)] + [(best_path[-1], best_path[0])]
     nx.draw(G, pos, with_labels=True, node_color='lightgreen', edge_color='gray')
     nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red', width=2)
+    labels = nx.get_edge_attributes(G, 'weight')
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
-    
+
+    plt.text(0.05, 0.95, f"melhor distância: {best_distance}\nordem de visitação: {best_path}",
+            transform=plt.gca().transAxes, fontsize=10, verticalalignment='top', bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+
     plt.show()
 
-n_city = 6
-random_city = generate_sparse_graph(n_city, edge_prob=0.6)
+    # Janela 2: Gráfico de Adaptação Média
+    plt.figure(figsize=(10, 7))
+    plt.plot(avg_distances, label='adaptação média', color='blue')
+    plt.title("evolução da adaptação média")
+    plt.xlabel("Geração")
+    plt.ylabel("Distância")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
-best_path, best_distance = genetic_algorithm(random_city)
+    plt.figure(figsize=(10, 7))
+    plt.plot(best_distances, label='melhor indivíduo', color='green')
+    plt.title("evolução do melhor indivíduo")
+    plt.xlabel("Geração")
+    plt.ylabel("Distância")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+# ----------------------------- #
+n_city = 15
+random_city = generate(n_city, edge_prob=0.75)
+
+best_path, best_distance, avg_distances, best_distances = genetic_algorithm(random_city)
 print(f"Melhor caminho encontrado: {best_path} com distância total de {best_distance} unidades")
-plot_graph(random_city, best_path)
+plot_graph(random_city, best_path, avg_distances, best_distances, best_distance)
+# ----------------------------- #
