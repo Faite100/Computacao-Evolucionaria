@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 
 POPULATION_SIZE = 100
 GENERATIONS = 50
@@ -48,8 +49,7 @@ def crossover(parent1, parent2):
 
 # Bit-flip mutation
 def mutation(chromosome):
-    return [gene if random.random() > MUTATION_RATE else 1-gene 
-            for gene in chromosome]
+    return [gene if random.random() > MUTATION_RATE else 1-gene for gene in chromosome]
 
 # Main evolutionary algorithm
 def evolutionary_algorithm():
@@ -57,6 +57,8 @@ def evolutionary_algorithm():
     population = initialize_population()
     best_individual = None
     best_fitness = -float('inf')
+    avg_fitness_per_generation = []
+    best_fitness_per_generation = []
     
     for generation in range(GENERATIONS):
         # Decode and evaluate fitness
@@ -69,6 +71,10 @@ def evolutionary_algorithm():
             best_fitness = current_best
             best_index = fitness_values.index(current_best)
             best_individual = population[best_index]
+        
+        # Store fitness values for plotting
+        avg_fitness_per_generation.append(np.mean(fitness_values))
+        best_fitness_per_generation.append(best_fitness)
         
         # Selection
         selected = selection(population, fitness_values)
@@ -103,6 +109,28 @@ def evolutionary_algorithm():
     print(f"\nOptimal solution found:")
     print(f"x = {best_x:.2f}")
     print(f"f(x) = {best_fitness:.2f}")
+    
+    # Plot graphs
+    plt.figure(figsize=(12, 5))
+    
+    # Plot average fitness per generation
+    plt.subplot(1, 2, 1)
+    plt.plot(range(GENERATIONS), avg_fitness_per_generation, label='Média da Adaptação', color='blue')
+    plt.xlabel('Geração')
+    plt.ylabel('Adaptação Média')
+    plt.title('Adaptação Média vs Geração')
+    plt.legend()
+    
+    # Plot best fitness per generation
+    plt.subplot(1, 2, 2)
+    plt.plot(range(GENERATIONS), best_fitness_per_generation, label='Melhor Adaptação', color='red')
+    plt.xlabel('Geração')
+    plt.ylabel('Melhor Adaptação')
+    plt.title('Melhor Indivíduo vs Geração')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.show()
     
     return best_x, best_fitness
 
