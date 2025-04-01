@@ -62,10 +62,31 @@ def ordered_crossover(parent1, parent2):
 
 # mutação de troca de posições
 def swap_mutation(individual):
+    # print('Antes:', individual)
     a, b = random.sample(range(len(individual)), 2)
     individual[a], individual[b] = individual[b], individual[a]
+    # print('Depois:', individual)
 
 def genetic_algorithm(graph, pop_size=50, generations=500, mutation_rate=0.1):
+    """
+    Executa um algoritmo genético para resolver o problema do caixeiro viajante.
+
+    Parâmetros:
+    - graph (dict): O grafo representando as cidades e as distâncias entre elas. 
+                    É um dicionário onde as chaves são os nós (cidades) e os valores 
+                    são dicionários com os vizinhos e os pesos das arestas.
+    - pop_size (int): O tamanho da população inicial. Define quantos indivíduos (caminhos) 
+                      existirão em cada geração. Valor padrão: 50.
+    - generations (int): O número de gerações que o algoritmo irá executar. Cada geração 
+                        representa uma iteração do processo de evolução. Valor padrão: 500.
+    - mutation_rate (float): A taxa de mutação, que define a probabilidade de um indivíduo 
+                            sofrer mutação após o crossover. Valor padrão: 0.1 (10%).
+
+    Retorna:
+    - best_solution (list): O melhor caminho encontrado pelo algoritmo, representado como 
+                            uma lista de nós (cidades).
+    - best_distance (float): A distância total do melhor caminho encontrado.
+    """
     population = create_population(graph, pop_size)
     best_solution = min(population, key=lambda p: fitness(graph, p))
     best_distance = fitness(graph, best_solution)
@@ -115,7 +136,7 @@ def plot_graph(graph, best_path):
     
     plt.show()
 
-n_city = 5
+n_city = 6
 random_city = generate_sparse_graph(n_city, edge_prob=0.6)
 
 best_path, best_distance = genetic_algorithm(random_city)
